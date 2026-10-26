@@ -19,7 +19,7 @@ GitHub Pages  (index.html)                    ← no data or secrets in this rep
 1. Open the **Labebe Ads Data** sheet → **Extensions → Apps Script**.
 2. Replace the code in `Code.gs` with `apps-script/Code.gs` from this repo.
 3. Click **+ → HTML**, name the file `Dashboard`, and paste in `apps-script/Dashboard.html`.
-4. In `Code.gs`, change `ACCESS_KEY` to a long secret phrase of your own.
+4. Open **Project Settings (gear icon) → Script Properties → Add script property**. Name: `ACCESS_KEY`, value: a long secret phrase of your own. Changing it later needs no redeploy.
 5. Fill in `BRANDS` with each brand's spreadsheet ID and daily tab names.
 6. **Deploy → New deployment → Web app**
    - Execute as: **Me**
@@ -42,7 +42,7 @@ Open the Pages link, click **Connect data**, then paste the Web app URL and your
 
 - The repo contains no data, sheet IDs or keys, so it is safe as a public repo.
 - Anyone who wants to see numbers needs both the Web app URL and the `ACCESS_KEY`.
-- To revoke access, change `ACCESS_KEY` in `Code.gs` and deploy a new version.
+- To revoke access, change the `ACCESS_KEY` script property. It takes effect immediately.
 
 ## Files
 

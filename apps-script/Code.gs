@@ -51,10 +51,10 @@ const HEADERS = {
 
 const CACHE_MINUTES = 5;
 
-// Access key for the GitHub Pages dashboard. Change this to your own secret phrase,
-// then enter the same key on the dashboard's "Connect data" screen.
+// Access key for the GitHub Pages dashboard. Set it in Project Settings → Script Properties
+// (property name: ACCESS_KEY), then enter the same key on the dashboard's "Connect data" screen.
 // Anyone without this key gets nothing back from the data link.
-const ACCESS_KEY = 'change-me-to-a-long-secret';
+const ACCESS_KEY = PropertiesService.getScriptProperties().getProperty('ACCESS_KEY') || 'change-me-to-a-long-secret';
 
 /* ─── Entry points ─────────────────────────────────────────────────────── */
 
