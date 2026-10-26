@@ -466,7 +466,7 @@ $('view').addEventListener('change',function(e){S.view=e.target.value;render()})
 $('metricTabs').addEventListener('click',function(e){var b=e.target.closest('button');if(b){S.metric=b.dataset.m;drawTrend(inRange(scoped(),S.from,S.to))}});
 $('tbl').addEventListener('click',function(e){var th=e.target.closest('th');if(!th)return;var k=th.dataset.k;S.sort=S.sort.k===k?{k:k,dir:-S.sort.dir}:{k:k,dir:k==='name'?1:-1};drawTable(inRange(scoped(),S.from,S.to))});
 ['rbMetric','mMetric','wMetric'].forEach(function(id){$(id).addEventListener('change',render)});
-$('refresh').addEventListener('click',function(){load(true)});
+$('refresh').addEventListener('click',function(){load(false)});
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if(S.rows.length)render()});
 
 /* ---------- data loading ---------- */
@@ -479,7 +479,7 @@ function ingest(d){
   fillBrands(); fillProducts(); render();
   var st=$('status');
   st.className='status'+(S.live?'':' preview');
-  st.querySelector('span').textContent=S.live?'Live from Google Sheets · pulled '+d.pulled:'Preview data · press Connect data to go live';
+  st.querySelector('span').textContent=S.live?'Live from Google Sheets · updated '+d.pulled+' · refreshes every 15 min':'Preview data · press Connect data to go live';
   var notes=[];
   if(!S.live)notes.push('<b>This is a preview.</b> LaBéBé Puchong shows your real daily rows. The other LaBéBé branches use your September and October totals spread across the days, so daily shapes are illustrative. Once installed in your sheet, every number comes straight from your tabs.');
   if(d.errors&&d.errors.length)notes.push('<b>Some tabs could not be read:</b> '+d.errors.map(esc).join(' · '));

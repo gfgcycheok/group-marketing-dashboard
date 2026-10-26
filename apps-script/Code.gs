@@ -66,7 +66,10 @@ const HEADERS = {
   booking:     ['no booking', 'booking', 'bookings', 'closed'],
 };
 
-const CACHE_MINUTES = 5;
+// The sheets take ~2 minutes to read, so a background job (installAutoRefresh) re-reads them
+// every 15 minutes and the dashboard always gets the saved copy instantly.
+const CACHE_MINUTES = 360; // Apps Script's maximum (6 hours)
+const REFRESH_EVERY_MINUTES = 15;
 
 // Access key for the GitHub Pages dashboard. Set it in Project Settings → Script Properties
 // (property name: ACCESS_KEY), then enter the same key on the dashboard's "Connect data" screen.
@@ -104,6 +107,23 @@ function onOpen() {
 function openDashboard() {
   const html = HtmlService.createHtmlOutputFromFile('Dashboard').setWidth(1500).setHeight(920);
   SpreadsheetApp.getUi().showModalDialog(html, 'Group Marketing Performance');
+}
+
+// Run this ONCE from the editor (select it in the function list, click Run) to start the
+// 15-minute background refresh. Running it again replaces the old schedule.
+function installAutoRefresh() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'refreshDashboardCache')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('refreshDashboardCache').timeBased().everyMinutes(REFRESH_EVERY_MINUTES).create();
+  refreshDashboardCache();
+}
+
+// Called by the background trigger: reads every sheet and saves the result for the dashboard.
+function refreshDashboardCache() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return; // a refresh is already running
+  try { getDashboardData(true); } finally { lock.releaseLock(); }
 }
 
 function clearCache() {
