@@ -29,21 +29,38 @@ const BRANDS = [
     },
   },
   // Paste each brand's spreadsheet ID (the long code in its URL between /d/ and /edit) and its tab names:
-  { name: 'Event Spaces',    spreadsheetId: '', tabs: {} },
+  {
+    name: 'Event Spaces',
+    spreadsheetId: '1ykPjj4asKP_0z98sFH-a9fC_ayIaOs_uW-Brokm4X7E', // Event Space Ads Data
+    tabs: {
+      'Glasshouse': 'Glasshouse',
+      'Artelier':   'Artelier Hall',
+      'Lena':       'Lena Hall',
+      'Dynasty':    'Dynasty Hall',
+      'Gocos':      'Gocos',
+      'DeGarden':   'De Garden',
+      'Penang':     'Penang',
+      'Ipoh':       'Ipoh',
+      'Melaka':     'Melaka',
+      'BP':         'Batu Pahat',
+      'Google':     'Event Spaces - Google',
+    },
+  },
   { name: 'MICE Team',       spreadsheetId: '', tabs: {} },
   { name: 'Kingston Hotels', spreadsheetId: '', tabs: {} },
   { name: 'Swing & Pillow',  spreadsheetId: '', tabs: {} },
   { name: 'Lilla Resort',    spreadsheetId: '', tabs: {} },
 ];
 
-// Header text the script accepts for each field (lower-case, exact match after trimming).
+// Header text the script accepts for each field. Matching ignores capitals and spaces,
+// so 'FBLead' matches 'fb lead' and 'NoBooking' matches 'no booking'.
 // Add your other brands' wording here, e.g. 'enquiry' for leads or 'event confirmed' for bookings.
 const HEADERS = {
-  date:        ['date', 'day'],
-  spend:       ['ads spend', 'ad spend', 'spend', 'spending', 'amount spent'],
-  revenue:     ['revenue', 'sales', 'sales amount'],
+  date:        ['date', 'day', '日期'],
+  spend:       ['ads spend', 'ad spend', 'spend', 'spending', 'amount spent', '广告费'],
+  revenue:     ['revenue', 'sales', 'sales amount', '销售额'],
   fbLead:      ['fb lead', 'meta lead', 'lead (marketing)', 'marketing lead', 'leads'],
-  salesLead:   ['sales lead', 'lead (sales)', 'whatsapp lead', 'enquiry'],
+  salesLead:   ['sales lead', 'sales team lead', 'lead (sales)', 'whatsapp lead', 'enquiry'],
   organicLead: ['organic lead', 'organic'],
   appt:        ['appointment', 'no appointment', 'no appt', 'appointments', 'site visit', 'viewing'],
   booking:     ['no booking', 'booking', 'bookings', 'closed'],
@@ -147,11 +164,11 @@ function getDashboardData(force) {
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
-function norm_(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function norm_(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
 
 function findHeaderRow_(values) {
   for (let r = 0; r < Math.min(10, values.length); r++) {
-    if (values[r].some(c => HEADERS.date.indexOf(norm_(c)) > -1)) return r;
+    if (values[r].some(c => HEADERS.date.map(norm_).indexOf(norm_(c)) > -1)) return r;
   }
   return -1;
 }
@@ -161,7 +178,7 @@ function mapColumns_(header) {
   const h = header.map(norm_);
   Object.keys(HEADERS).forEach(field => {
     for (const alias of HEADERS[field]) {
-      const i = h.indexOf(alias);
+      const i = h.indexOf(norm_(alias));
       if (i > -1 && Object.values(col).indexOf(i) === -1) { col[field] = i; break; }
     }
   });
