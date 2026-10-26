@@ -50,8 +50,8 @@ const BRANDS = [
     name: 'MICE Team',
     spreadsheetId: '1Cf-oUUgCjX2Dp99AAJz0jsBOoa9UEVaxGRMP0brznUA', // MICE Team Ads Data
     tabs: {
-      'K10-WS':            'K10 - WS',
-      'K10-LF':            'K10 - LF',
+      'K10-WS':            'K10',   // WS and LF are combined into one K10 line
+      'K10-LF':            'K10',
       'K11 - PWTC':        'K11 - PWTC',
       'K12 - Romania':     'K12 - Romania',
       'K15 - Ipoh':        'K15 - Tower Regency (Ipoh)',
