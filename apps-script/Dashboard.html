@@ -133,7 +133,6 @@ table.find th{text-align:left;cursor:default}
 table.find td.sev{white-space:nowrap}
 table.find .prob b{display:block;color:var(--ink)}
 table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
-table.find .ap{min-width:260px}
 .pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
 .pill.critical{background:var(--bad-soft);color:var(--bad)}
 .pill.warning{background:#fff1d6;color:#9a5b00}
@@ -145,6 +144,7 @@ table.find .ap{min-width:260px}
 .fchips button{font:700 12px var(--font);border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:999px;padding:5px 10px;cursor:pointer}
 .fchips button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .apf{display:flex;flex-direction:column;gap:6px}
+.apf.gen{margin-bottom:4px}
 .apf textarea{font:500 13px var(--font);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:54px;width:100%}
 .apf textarea:focus{outline:2px solid var(--accent);outline-offset:0}
 .apf .row2{display:flex;gap:8px;align-items:center;justify-content:space-between}
@@ -296,9 +296,13 @@ table.find .ap{min-width:260px}
 
       <section class="card" id="logCard">
         <div class="ch">
-          <div><h2>Action Plan Log</h2><div class="fnote" id="logNote">Latest first</div></div>
+          <div><h2>Action Plan</h2><div class="fnote" id="logNote">Latest first</div></div>
           <label class="who" for="whoName">Posting as <input id="whoName" type="text" maxlength="40" placeholder="Your name"></label>
         </div>
+        <form class="apf gen" id="apForm">
+          <textarea id="apText" maxlength="1000" rows="3" placeholder="Write an action plan, e.g. Cut Google budget 30% and test 2 new creatives for Glasshouse this week" aria-label="Action plan"></textarea>
+          <div class="row2"><small id="apTag"></small><button type="submit" id="apBtn">Submit</button></div>
+        </form>
         <ol class="log" id="log"></ol>
       </section>
     </div>
@@ -578,27 +582,25 @@ function drawFindings(cur,prev){
   $('findChips').innerHTML=['all','critical','warning','info','good'].map(function(k){return '<button type="button" data-sev="'+k+'" class="'+(S.sevFilter===k?'on':'')+'">'+(k==='all'?'All':SEV_LABEL[k])+' '+(counts[k]||0)+'</button>'}).join('');
   var list=S.sevFilter==='all'?all:all.filter(function(f){return f.sev===S.sevFilter}), multi=S.brand==='all';
   $('findNote').textContent=dLabel(S.from)+' – '+dLabel(S.to)+', compared with the '+span(S.from,S.to)+' days before';
-  $('find').innerHTML='<thead><tr><th>Status</th><th>Branch / Product</th><th>Finding / Problem</th><th>Suggested Solution</th><th>Action Plan</th></tr></thead><tbody>'+
+  $('find').innerHTML='<thead><tr><th>Status</th><th>Branch / Product</th><th>Finding / Problem</th><th>Suggested Solution</th></tr></thead><tbody>'+
     (list.length?list.map(function(f){
-      var cs=commentsFor(f.key), id='ap_'+btoa(unescape(encodeURIComponent(f.key))).replace(/[^a-z0-9]/gi,'');
       return '<tr><td class="sev"><span class="pill '+f.sev+'">'+SEV_LABEL[f.sev]+'</span></td>'+
         '<td>'+esc(f.p)+(multi?'<span class="br">'+esc(f.b)+'</span>':'')+'</td>'+
         '<td class="prob"><b>'+esc(f.problem)+'</b><span>'+esc(f.detail)+'</span></td>'+
-        '<td class="sol">'+esc(f.solution)+'</td>'+
-        '<td class="ap"><form class="apf" data-key="'+esc(f.key)+'"><textarea id="'+id+'" maxlength="1000" placeholder="Add an action plan…" aria-label="Action plan for '+esc(f.p)+'">'+esc(S.drafts[f.key]||'')+'</textarea>'+
-        '<div class="row2"><small>'+(cs.length?cs.length+' comment'+(cs.length>1?'s':''):'No action yet')+'</small><button type="submit">Submit</button></div></form>'+
-        (cs.length?'<div class="aplast">'+cs.slice(0,2).map(cmHtml).join('')+(cs.length>2?'<small class="fnote">+'+(cs.length-2)+' more in the log below</small>':'')+'</div>':'')+'</td></tr>';
-    }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--faint);padding:24px">No issues found for this period</td></tr>')+'</tbody>';
+        '<td class="sol">'+esc(f.solution)+'</td></tr>';
+    }).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--faint);padding:24px">No issues found for this period</td></tr>')+'</tbody>';
   drawLog();
 }
+function apScope(){return {brand:S.brand==='all'?'All brands':S.brand, branch:S.product==='all'?'All branches':S.product}}
 function drawLog(){
-  var fmap={}; (S.findings||[]).forEach(function(f){fmap[f.key]=f});
-  var list=S.comments.filter(function(c){return S.brand==='all'||c.brand===S.brand});
-  $('logNote').textContent=(list.length?list.length+' action plan'+(list.length>1?'s':''):'No action plans yet')+' · latest first'+(S.live?'':' · preview only, not saved');
+  var sc=apScope();
+  $('apTag').textContent='Tagged: '+sc.brand+(S.product!=='all'?' · '+sc.branch:'')+(S.live?'':' · preview only, not saved');
+  var list=S.comments.filter(function(c){return S.brand==='all'||c.brand===S.brand||c.brand==='All brands'});
+  $('logNote').textContent=(list.length?list.length+' action plan'+(list.length>1?'s':''):'No action plans yet')+' · latest first';
   $('log').innerHTML=list.length?list.map(function(c){
-    var f=fmap[c.key];
-    return '<li><div class="lh"><b>'+esc(c.by||'Someone')+'</b><span>'+fmtTime(c.t)+'</span><span>· '+esc(c.branch)+(S.brand==='all'?' ('+esc(c.brand)+')':'')+'</span>'+(c.finding?'<span>· '+esc(c.finding)+'</span>':'')+(f?'<span class="pill '+f.sev+'">'+SEV_LABEL[f.sev]+'</span>':'')+'</div><p>'+esc(c.text)+'</p></li>';
-  }).join(''):'<li class="empty2">Action plans you submit on a finding appear here, newest at the top.</li>';
+    var tag=[c.brand,c.branch&&c.branch!=='All branches'?c.branch:''].filter(Boolean).join(' · ');
+    return '<li><div class="lh"><b>'+esc(c.by||'Someone')+'</b><span>'+fmtTime(c.t)+'</span>'+(tag?'<span class="pill info">'+esc(tag)+'</span>':'')+'</div><p>'+esc(c.text)+'</p></li>';
+  }).join(''):'<li class="empty2">No action plans yet. Write the first one above.</li>';
 }
 function api(action,payload){
   return new Promise(function(resolve,reject){
@@ -618,20 +620,19 @@ function api(action,payload){
 }
 function loadComments(){
   if(!S.live){drawLog();return}
-  api('comments').then(function(d){S.comments=d.comments||[];if(S.findings)drawFindings(inRange(scoped(),S.from,S.to),inRange(scoped(),addDays(S.from,-span(S.from,S.to)),addDays(S.from,-1)))}).catch(function(e){$('logNote').textContent='Could not load action plans: '+e.message});
+  api('comments').then(function(d){S.comments=d.comments||[];drawLog()}).catch(function(e){$('logNote').textContent='Could not load action plans: '+e.message});
 }
 $('findChips').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.sevFilter=b.dataset.sev;render()});
-$('find').addEventListener('input',function(e){var f=e.target.closest('form.apf');if(f)S.drafts[f.dataset.key]=e.target.value});
-$('find').addEventListener('submit',function(e){
-  e.preventDefault();var form=e.target, key=form.dataset.key, ta=form.querySelector('textarea'), btn=form.querySelector('button'), text=ta.value.trim();
+$('apForm').addEventListener('submit',function(e){
+  e.preventDefault();var ta=$('apText'), btn=$('apBtn'), text=ta.value.trim();
   if(!text){ta.focus();return}
   var who=$('whoName').value.trim(); if(!who){$('whoName').focus();$('whoName').placeholder='Enter your name first';return}
-  var f=(S.findings||[]).filter(function(x){return x.key===key})[0]||{b:'',p:'',problem:''};
-  var c={key:key,brand:f.b,branch:f.p,finding:f.problem,text:text,by:who};
+  try{localStorage.setItem('gmp_name',who)}catch(err){}
+  var sc=apScope(), c={key:'general',brand:sc.brand,branch:sc.branch,finding:'',text:text,by:who};
   btn.disabled=true;btn.textContent='Saving…';
-  var done=function(list){S.drafts[key]='';S.comments=list;render()};
+  var done=function(list){ta.value='';btn.disabled=false;btn.textContent='Submit';S.comments=list;drawLog()};
   if(!S.live){done([Object.assign({t:new Date().toISOString()},c)].concat(S.comments));return}
-  api('add',c).then(function(d){done(d.comments||[])}).catch(function(err){btn.disabled=false;btn.textContent='Submit';form.querySelector('small').textContent='Not saved: '+err.message});
+  api('add',c).then(function(d){done(d.comments||[])}).catch(function(err){btn.disabled=false;btn.textContent='Submit';$('apTag').textContent='Not saved: '+err.message});
 });
 try{$('whoName').value=localStorage.getItem('gmp_name')||''}catch(e){}
 $('whoName').addEventListener('change',function(){try{localStorage.setItem('gmp_name',$('whoName').value.trim())}catch(e){}});
