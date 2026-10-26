@@ -134,6 +134,24 @@ td .br{display:block;font-size:10.5px;color:var(--faint);font-weight:500}
 .tier .ts{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tier.low .tn{color:var(--bad)} .tier.mid .tn{color:var(--good)} .tier.high .tn{color:var(--accent)}
 .tier.on{border-color:currentColor;box-shadow:0 0 0 2px var(--accent) inset}
+.rtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.rtw{min-width:0;overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.rtab{width:100%;border-collapse:collapse;font-size:13px}
+table.rtab th{background:#0b84c6;color:#fff;text-align:left;font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;padding:8px 10px;border:0;cursor:default}
+table.rtab th:last-child{text-align:center;width:96px;border-left:1px solid rgba(255,255,255,.35)}
+table.rtab td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:normal}
+table.rtab tbody tr:nth-child(even) td:first-child{background:var(--surface-2)}
+table.rtab tbody tr[data-key]{cursor:pointer}
+table.rtab tbody tr[data-key]:hover td:first-child{background:var(--accent-soft)}
+table.rtab tbody tr.on td{box-shadow:inset 0 0 0 2px var(--accent)}
+table.rtab tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+table.rtab td i{color:var(--faint);font-size:11.5px}
+table.rtab td.v{text-align:center;font-weight:800;font-variant-numeric:tabular-nums;border-left:1px solid var(--line)}
+table.rtab td.v.hi{background:var(--good-soft);color:var(--good)}
+table.rtab td.v.lo{background:var(--bad-soft);color:var(--bad)}
+table.rtab td.v.zero{color:var(--faint)}
+table.rtab td.none{text-align:center;color:var(--faint);padding:16px}
+@media (max-width:980px){.rtabs{grid-template-columns:minmax(0,1fr)}}
 .rgrp h3{margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .rc{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;background:var(--surface);min-height:66px}
@@ -276,7 +294,7 @@ table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
         <div class="tiers" id="tiers"></div>
       </section>
       <section class="card">
-        <div class="ch"><div><h2>ROAS by Branch</h2><div class="fnote">Green: 20x and above · Red: below 20x · Blank: no sales yet. Click a branch for its detail.</div></div>
+        <div class="ch"><div><h2>ROAS by Branch</h2><div class="fnote">Green: 20x and above · Red: below 20x (including spend with no sales) · ROAS = 0: no ad spend this period. Click a branch for its detail.</div></div>
           <div class="fchips" id="roasChips"></div></div>
         <div id="roasGrid" class="stack"></div>
       </section>
@@ -693,13 +711,13 @@ $('whoName').addEventListener('change',function(){try{localStorage.setItem('gmp_
 var ROAS_TARGET=20, ROAS_HIGH=50;
 S.page='main'; S.roasSel=null;
 function dispName(x){return x.b==='LaBéBé'&&!/^lab[eé]b[eé]/i.test(x.p)?'LaBéBé '+x.p:x.p}
-function tierOf(r){return r<=0?null:r<ROAS_TARGET?'low':r<=ROAS_HIGH?'mid':'high'}
+function tierOf(r,spend){return r<=0?(spend>0?'low':null):r<ROAS_TARGET?'low':r<=ROAS_HIGH?'mid':'high'}
 var TIER_NAME={low:'Below 20x',mid:'20x – 50x',high:'Above 50x'};
 function roasGroups(cur){return groupBy(cur).filter(function(x){return x.t.spend>0||x.t.rev>0})}
 function drawOverall(cur){
   var t=agg(cur), ratio=t.rev?t.spend/t.rev:0, gs=roasGroups(cur);
-  var low=gs.filter(function(x){return tierOf(x.t.roas)==='low'}).sort(function(a,b){return a.t.roas-b.t.roas});
-  var none=gs.filter(function(x){return x.t.spend>0&&x.t.rev===0}).length;
+  var low=gs.filter(function(x){return tierOf(x.t.roas,x.t.spend)==='low'}).sort(function(a,b){return a.t.roas-b.t.roas||b.t.spend-a.t.spend});
+  var none=0;
   $('overall').innerHTML=
     '<div class="ov"><span class="l">Marketing Fee Ratio</span><span class="v">'+(t.rev?(ratio*100).toFixed(2)+'%':'—')+'</span><span class="s">Ad spend '+RM(t.spend,0)+' ÷ sales '+RM(t.rev,0)+'</span></div>'+
     '<div class="ov"><span class="l">Implied Blended ROAS</span><span class="v" style="color:'+(ratio&&1/ratio>=ROAS_TARGET?'var(--good)':'var(--bad)')+'">'+(ratio?(1/ratio).toFixed(2)+'x':'—')+'</span><span class="s">1 ÷ marketing fee ratio · target '+ROAS_TARGET+'x</span></div>'+
@@ -708,19 +726,29 @@ function drawOverall(cur){
 }
 function drawRoas(cur){
   var gs=roasGroups(cur), sel=S.roasSel;
-  var tiers={low:[],mid:[],high:[]}; gs.forEach(function(x){var k=tierOf(x.t.roas);if(k)tiers[k].push(x)});
+  var tiers={low:[],mid:[],high:[]}; gs.forEach(function(x){var k=tierOf(x.t.roas,x.t.spend);if(k)tiers[k].push(x)});
   $('tiers').innerHTML=['low','mid','high'].map(function(k){var g=tiers[k],a=agg([].concat.apply([],g.map(function(x){return x.rows})));
     return '<button type="button" class="tier '+k+(sel&&sel.tier===k?' on':'')+'" data-tier="'+k+'"><span class="tn">'+TIER_NAME[k]+'</span><span class="tc">'+g.length+' <small style="font-size:13px;color:var(--muted);font-weight:600">branch'+(g.length===1?'':'es')+'</small></span><span class="ts">Spend '+RM(a.spend,0)+' · Sales '+RM(a.rev,0)+(a.spend?' · '+a.roas.toFixed(1)+'x':'')+'</span></button>'}).join('');
   $('roasChips').innerHTML=[['all','All'],['ge','20x and above'],['lt','Below 20x']].map(function(c){var on=(!sel&&c[0]==='all')||(sel&&sel.band===c[0]);return '<button type="button" data-band="'+c[0]+'" class="'+(on?'on':'')+'">'+c[1]+'</button>'}).join('');
-  var byBrand={}; gs.forEach(function(x){(byBrand[x.b]=byBrand[x.b]||[]).push(x)});
-  $('roasGrid').innerHTML=Object.keys(byBrand).map(function(b){
-    return '<div class="rgrp"><h3>'+esc(b)+'</h3><div class="rgrid">'+byBrand[b].sort(function(p,q){return q.t.roas-p.t.roas}).map(function(x){
-      var r=x.t.roas, cls=r<=0?'':r>=ROAS_TARGET?'g':'b', k=x.b+'|'+x.p;
-      return '<button type="button" class="rc '+cls+(sel&&sel.key===k?' on':'')+'" data-key="'+esc(k)+'" title="Spend '+RM(x.t.spend,0)+' · Sales '+RM(x.t.rev,0)+'"><span class="n">'+esc(dispName(x))+'</span><span class="r">'+(r>0?r.toFixed(2)+'x':'')+'</span></button>'}).join('')+'</div></div>'}).join('')||'<div class="fnote">No branches with spend in this period</div>';
+  // every branch known for the selected brand(s), so branches with no activity this period show as ROAS = 0
+  var known={}, scope=scoped(); scope.forEach(function(r){known[r.b+'|'+r.p]={b:r.b,p:r.p}});
+  var curMap={}; groupBy(cur).forEach(function(x){curMap[x.b+'|'+x.p]=x});
+  var allB=Object.keys(known).map(function(k){return curMap[k]||{b:known[k].b,p:known[k].p,rows:[],t:agg([])}});
+  var colHi=allB.filter(function(x){return x.t.roas>=ROAS_TARGET}).sort(function(p,q){return q.t.roas-p.t.roas});
+  var colLo=allB.filter(function(x){return x.t.roas<ROAS_TARGET&&x.t.spend>0}).sort(function(p,q){return q.t.roas-p.t.roas});
+  var colZero=allB.filter(function(x){return x.t.spend<=0&&x.t.rev<=0}).sort(function(p,q){return dispName(p).localeCompare(dispName(q))});
+  function rtab(title,list,kind){
+    return '<div class="rtw"><table class="rtab"><thead><tr><th>'+esc(title)+'</th><th>ROAS</th></tr></thead><tbody>'+
+      (list.length?list.map(function(x){var k=x.b+'|'+x.p, r=x.t.roas;
+        var note=kind==='lo'&&r===0?' <i>(no sales yet)</i>':kind==='zero'?' <i>(no ad spend)</i>':'';
+        return '<tr class="'+(sel&&sel.key===k?'on':'')+'" data-key="'+esc(k)+'" tabindex="0" title="Spend '+RM(x.t.spend,0)+' · Sales '+RM(x.t.rev,0)+'"><td>'+esc(dispName(x))+note+(S.brand==='all'?'<span class="br">'+esc(x.b)+'</span>':'')+'</td><td class="v '+kind+'">'+(kind==='zero'?'–':r.toFixed(2)+'x')+'</td></tr>'}).join('')
+      :'<tr><td colspan="2" class="none">None</td></tr>')+'</tbody></table></div>';
+  }
+  $('roasGrid').innerHTML='<div class="rtabs">'+rtab('ROAS 20x & above ('+colHi.length+')',colHi,'hi')+rtab('ROAS below 20x ('+colLo.length+')',colLo,'lo')+rtab('ROAS = 0 ('+colZero.length+')',colZero,'zero')+'</div>';
   // detail
   var list=gs, title='All branches';
   if(sel&&sel.tier){list=tiers[sel.tier];title=TIER_NAME[sel.tier]}
-  else if(sel&&sel.band){list=gs.filter(function(x){return sel.band==='ge'?x.t.roas>=ROAS_TARGET:x.t.roas>0&&x.t.roas<ROAS_TARGET});title=sel.band==='ge'?'20x and above':'Below 20x'}
+  else if(sel&&sel.band){list=gs.filter(function(x){return sel.band==='ge'?x.t.roas>=ROAS_TARGET:x.t.roas<ROAS_TARGET&&x.t.spend>0});title=sel.band==='ge'?'20x and above':'Below 20x'}
   else if(sel&&sel.key){list=gs.filter(function(x){return x.b+'|'+x.p===sel.key});title=list[0]?dispName(list[0]):'Branch'}
   list=list.slice().sort(function(p,q){return q.t.roas-p.t.roas});
   $('roasDetailTitle').textContent='Detail · '+title; $('roasClear').hidden=!sel;
@@ -737,7 +765,8 @@ function drawRoas(cur){
 }
 $('tiers').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var k=b.dataset.tier;S.roasSel=S.roasSel&&S.roasSel.tier===k?null:{tier:k};render();$('roasDetailCard').scrollIntoView({behavior:'smooth',block:'start'})});
 $('roasChips').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.roasSel=b.dataset.band==='all'?null:{band:b.dataset.band};render()});
-$('roasGrid').addEventListener('click',function(e){var b=e.target.closest('button.rc');if(!b)return;S.roasSel=S.roasSel&&S.roasSel.key===b.dataset.key?null:{key:b.dataset.key};render();$('roasDetailCard').scrollIntoView({behavior:'smooth',block:'start'})});
+$('roasGrid').addEventListener('keydown',function(e){var t=e.target.closest&&e.target.closest('tr[data-key]');if(t&&(e.key==='Enter'||e.key===' ')){e.preventDefault();t.click()}});
+$('roasGrid').addEventListener('click',function(e){var b=e.target.closest('tr[data-key]');if(!b)return;S.roasSel=S.roasSel&&S.roasSel.key===b.dataset.key?null:{key:b.dataset.key};render();$('roasDetailCard').scrollIntoView({behavior:'smooth',block:'start'})});
 $('roasClear').addEventListener('click',function(){S.roasSel=null;render()});
 
 /* ---------- controls ---------- */
