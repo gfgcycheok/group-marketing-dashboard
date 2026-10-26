@@ -98,16 +98,83 @@ const ACCESS_KEY = PropertiesService.getScriptProperties().getProperty('ACCESS_K
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.format === 'json') {
-    let body;
-    if (!ACCESS_KEY || ACCESS_KEY === 'change-me-to-a-long-secret') body = { error: 'Set ACCESS_KEY in Code.gs first.' };
-    else if (p.key !== ACCESS_KEY) body = { error: 'Wrong access key.' };
-    else body = getDashboardData(p.refresh === '1');
-    return ContentService.createTextOutput(JSON.stringify(body)).setMimeType(ContentService.MimeType.JSON);
+    let body = keyError_(p.key);
+    if (!body) body = p.action === 'comments' ? { comments: getActionComments() } : getDashboardData(p.refresh === '1');
+    return json_(body);
   }
   return HtmlService.createHtmlOutputFromFile('Dashboard')
     .setTitle('Group Marketing Performance')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Action plan comments posted from the GitHub Pages dashboard
+function doPost(e) {
+  let body;
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    body = keyError_(req.key);
+    if (!body) {
+      if (req.action === 'addComment') body = { comments: addActionComment(req.comment || {}) };
+      else body = { error: 'Unknown action.' };
+    }
+  } catch (err) { body = { error: String(err.message || err) }; }
+  return json_(body);
+}
+
+function keyError_(key) {
+  if (!ACCESS_KEY || ACCESS_KEY === 'change-me-to-a-long-secret') return { error: 'Set ACCESS_KEY in Project Settings first.' };
+  if (key !== ACCESS_KEY) return { error: 'Wrong access key.' };
+  return null;
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ─── Action plans (saved in a tab of the spreadsheet this script belongs to) ── */
+
+const ACTION_SHEET = 'Dashboard Action Plans';
+const ACTION_HEADERS = ['Timestamp', 'Brand', 'Branch / Product', 'Finding', 'Action Plan', 'Posted By', 'Finding Key'];
+
+function actionSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(ACTION_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(ACTION_SHEET);
+    sh.getRange(1, 1, 1, ACTION_HEADERS.length).setValues([ACTION_HEADERS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(4, 260); sh.setColumnWidth(5, 420);
+  }
+  return sh;
+}
+
+// Newest first
+function getActionComments() {
+  const sh = actionSheet_();
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return [];
+  return sh.getRange(2, 1, n, ACTION_HEADERS.length).getValues()
+    .filter(r => r[4] !== '')
+    .map(r => ({
+      t: r[0] instanceof Date ? r[0].toISOString() : String(r[0]),
+      brand: String(r[1]), branch: String(r[2]), finding: String(r[3]),
+      text: String(r[4]), by: String(r[5]), key: String(r[6]),
+    }))
+    .reverse();
+}
+
+function addActionComment(c) {
+  const clean = (v, max) => String(v == null ? '' : v).replace(/^[=+\-@]/, "'$&").slice(0, max);
+  const text = String(c.text || '').trim();
+  if (!text) throw new Error('Action plan is empty.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    actionSheet_().appendRow([new Date(), clean(c.brand, 60), clean(c.branch, 80), clean(c.finding, 200),
+      clean(text, 1000), clean(c.by || 'Someone', 40), clean(c.key, 200)]);
+  } finally { lock.releaseLock(); }
+  return getActionComments();
 }
 
 // Adds a "Dashboard" menu inside the sheet

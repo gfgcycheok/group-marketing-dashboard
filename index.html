@@ -132,6 +132,41 @@ tr.sub td:first-child b{color:var(--ink);font-weight:700}
 tr.sub.cur td{background:var(--accent-soft)}
 tr.sub.last td{border-bottom:2px solid var(--accent)}
 td .dl{display:block;font-size:10px;font-weight:700}
+table.find td{white-space:normal;vertical-align:top;text-align:left;line-height:1.45}
+table.find th{text-align:left;cursor:default}
+table.find td.sev{white-space:nowrap}
+table.find .prob b{display:block;color:var(--ink)}
+table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
+table.find .ap{min-width:260px}
+.pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.pill.critical{background:var(--bad-soft);color:var(--bad)}
+.pill.warning{background:#fff1d6;color:#9a5b00}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+:root[data-theme="dark"] .pill.warning{background:#3a2c10;color:var(--amber)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pill.warning{background:#3a2c10;color:var(--amber)}}
+.fchips{display:flex;flex-wrap:wrap;gap:6px}
+.fchips button{font:700 12px var(--font);border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:999px;padding:5px 10px;cursor:pointer}
+.fchips button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.apf{display:flex;flex-direction:column;gap:6px}
+.apf textarea{font:500 13px var(--font);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:54px;width:100%}
+.apf textarea:focus{outline:2px solid var(--accent);outline-offset:0}
+.apf .row2{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.apf button{font:700 12px var(--font);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer}
+.apf button:disabled{opacity:.5;cursor:default}
+.apf small{font-size:11px;color:var(--faint)}
+.aplast{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.cm{border-left:3px solid var(--accent);padding:4px 0 4px 8px;font-size:12.5px}
+.cm p{margin:0;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.cm span{display:block;font-size:11px;color:var(--faint);margin-top:2px}
+.who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
+.who input{font:600 13px var(--font);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:160px}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.log li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:var(--surface-2)}
+.log .lh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--muted)}
+.log .lh b{color:var(--ink)}
+.log p{margin:0;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.log .empty2{color:var(--faint);text-align:center;padding:18px;border:1px dashed var(--line);background:transparent}
 .roas{font-weight:700}
 .roas.hi{color:var(--good)} .roas.zero{color:var(--faint)}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:40px 24px;text-align:center;color:var(--muted);line-height:1.6}
@@ -257,6 +292,22 @@ td .dl{display:block;font-size:10px;font-weight:700}
           <div class="tw"><table id="top"></table></div>
         </article>
       </section>
+
+      <section class="card" id="findCard">
+        <div class="ch">
+          <div><h2>Findings, Problems &amp; Solutions</h2><div class="fnote" id="findNote">Checked automatically for the selected period</div></div>
+          <div class="fchips" id="findChips"></div>
+        </div>
+        <div class="tw"><table id="find" class="find"></table></div>
+      </section>
+
+      <section class="card" id="logCard">
+        <div class="ch">
+          <div><h2>Action Plan Log</h2><div class="fnote" id="logNote">Latest first</div></div>
+          <label class="who" for="whoName">Posting as <input id="whoName" type="text" maxlength="40" placeholder="Your name"></label>
+        </div>
+        <ol class="log" id="log"></ol>
+      </section>
     </div>
   </main>
 </div>
@@ -277,7 +328,7 @@ var mLabel = function(k){return MON[+k.slice(5,7)-1]+"'"+k.slice(2,4)};
 var nf0 = new Intl.NumberFormat('en-MY',{maximumFractionDigits:0});
 var nf2 = new Intl.NumberFormat('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 var RM = function(v,dec){return 'RM'+(dec===0?nf0:nf2).format(v||0)};
-var RMs = function(v){v=v||0;return Math.abs(v)>=1e6?'RM'+(v/1e6).toFixed(2)+'M':Math.abs(v)>=1e3?'RM'+(v/1e3).toFixed(0)+'K':'RM'+nf0.format(v)};
+var RMs = function(v){v=v||0;return Math.abs(v)>=1e6?'RM'+(v/1e6).toFixed(2)+'M':Math.abs(v)>=1e3?'RM'+(v/1e3).toFixed(Math.abs(v)<1e4&&v%1000?1:0)+'K':'RM'+nf0.format(v)};
 var N = function(v){return nf0.format(v||0)};
 var pct = function(a,b){return b?(a/b*100):0};
 var esc = function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
@@ -343,7 +394,7 @@ function render(){
     return;
   }
   var t=agg(cur), p=agg(prev);
-  drawKpis(t,p,n); drawTrend(cur); drawFunnel(t); drawSource(cur); drawTable(cur); drawBranch(cur); drawMonth(all); drawWeek(cur); drawTop(cur);
+  drawKpis(t,p,n); drawTrend(cur); drawFunnel(t); drawSource(cur); drawTable(cur); drawBranch(cur); drawMonth(all); drawWeek(cur); drawTop(cur); drawFindings(cur,prev);
 }
 
 function drawKpis(t,p,n){
@@ -503,6 +554,95 @@ function drawTop(cur){
     (gs.length?gs.map(function(x){return '<tr><td>'+esc(x.p)+(multi?'<span class="br">'+esc(x.b)+'</span>':'')+'</td><td>'+RMs(x.t.spend)+'</td><td>'+N(x.t.book)+'</td><td>'+RM(x.t.rev,0)+'</td>'+roasCell(x.t.roas)+'</tr>'}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--faint)">No revenue in this period</td></tr>')+'</tbody>';
 }
 
+/* ---------- findings, problems & solutions ---------- */
+var SEV_ORDER={critical:0,warning:1,info:2,good:3}, SEV_LABEL={critical:'Critical',warning:'Warning',info:'Check',good:'Opportunity'};
+S.sevFilter='all'; S.comments=[]; S.drafts={};
+function buildFindings(cur,prev){
+  var out=[], gs=groupBy(cur), pg={}; groupBy(prev).forEach(function(x){pg[x.b+'|'+x.p]=x.t});
+  var brandT={}; S.brands.forEach(function(b){brandT[b]=agg(cur.filter(function(r){return r.b===b}))});
+  gs.forEach(function(x){
+    var t=x.t, p=pg[x.b+'|'+x.p], bt=brandT[x.b]||t, id=x.b+'|'+x.p;
+    function add(rule,sev,problem,detail,solution){out.push({key:id+'|'+rule,b:x.b,p:x.p,sev:sev,problem:problem,detail:detail,solution:solution})}
+    if(t.spend>=100&&t.fb===0&&t.sales===0) add('noleads','critical','Spending with no leads',RM(t.spend)+' spent, 0 marketing or sales leads.','Check the ad is delivering and the lead form / WhatsApp link works. Confirm leads are being recorded in the sheet.');
+    else if(t.spend>=300&&t.book===0&&t.fb+t.sales>0) add('nobook','critical','No bookings from ad spend',RM(t.spend)+' spent, '+N(t.fb)+' marketing leads, '+N(t.appt)+' appointments, 0 bookings.','Review lead quality and sales follow-up speed. Test a new offer or audience, and cut budget if there are still no bookings next period.');
+    if(p&&p.rev>0&&t.rev<p.rev*0.7&&!(t.rev===0&&t.book===0&&t.spend>=300)) add('revdrop',t.rev<p.rev*0.4?'critical':'warning','Revenue down '+Math.round((1-t.rev/p.rev)*100)+'% vs previous period',RM(t.rev,0)+' now vs '+RM(p.rev,0)+' before. Bookings '+N(t.book)+' vs '+N(p.book)+'.','Check whether the drop comes from fewer bookings or a lower AOV. Follow up open appointments and pending KIV cases.');
+    if(t.fb>=5&&bt.cpl>0&&t.cpl>bt.cpl*1.5) add('highcpl','warning','CPL well above brand average','CPL '+RM(t.cpl)+' vs '+x.b+' average '+RM(bt.cpl)+'.','Refresh the creative and hook, narrow targeting, and move budget towards lower-CPL branches.');
+    else if(p&&p.fb>=5&&t.fb>=5&&p.cpl>0&&t.cpl>p.cpl*1.3) add('cplup','warning','CPL up '+Math.round((t.cpl/p.cpl-1)*100)+'% vs previous period','CPL '+RM(t.cpl)+' now vs '+RM(p.cpl)+' before.','Likely creative fatigue. Launch 2–3 new creatives and check frequency in Ads Manager.');
+    if(t.sales>=10&&t.appt/t.sales<0.10) add('lowappt','warning','Few leads turning into appointments',N(t.appt)+' appointments from '+N(t.sales)+' sales leads ('+pct(t.appt,t.sales).toFixed(1)+'%).','Speed up first reply (aim under 5 minutes), use a follow-up script, and offer a clear reason to visit.');
+    if(t.appt>=5&&t.book/t.appt<0.2) add('lowclose','warning','Low booking rate after appointment',N(t.book)+' bookings from '+N(t.appt)+' appointments ('+pct(t.book,t.appt).toFixed(1)+'%).','Review the viewing / consultation experience, the offer and price objections, and the follow-up after visits.');
+    if(t.fb>0&&t.sales>t.fb*3&&t.sales>=20) add('attrib','info','Sales leads far above marketing leads',N(t.sales)+' sales leads vs '+N(t.fb)+' marketing leads.','Check lead source tagging, since organic or repeat leads may be counted here.');
+    if(t.spend>=300&&t.rev>0&&bt.roas>0&&t.roas>=bt.roas*1.5&&t.book>=2) add('scale','good','Strong ROAS: room to scale','ROAS '+t.roas.toFixed(2)+'x vs '+x.b+' average '+bt.roas.toFixed(2)+'x.','Raise budget 20–30% and watch CPL for a week before scaling again.');
+  });
+  out.sort(function(a,b){return SEV_ORDER[a.sev]-SEV_ORDER[b.sev]||a.b.localeCompare(b.b)||a.p.localeCompare(b.p)});
+  return out;
+}
+function fmtTime(t){var d=new Date(t);return isNaN(d)?'':d.toLocaleString('en-MY',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}
+function commentsFor(key){return S.comments.filter(function(c){return c.key===key})}
+function cmHtml(c){return '<div class="cm"><p>'+esc(c.text)+'</p><span>'+esc(c.by||'Someone')+' · '+fmtTime(c.t)+'</span></div>'}
+function drawFindings(cur,prev){
+  var all=buildFindings(cur,prev); S.findings=all;
+  var counts={all:all.length}; all.forEach(function(f){counts[f.sev]=(counts[f.sev]||0)+1});
+  $('findChips').innerHTML=['all','critical','warning','info','good'].map(function(k){return '<button type="button" data-sev="'+k+'" class="'+(S.sevFilter===k?'on':'')+'">'+(k==='all'?'All':SEV_LABEL[k])+' '+(counts[k]||0)+'</button>'}).join('');
+  var list=S.sevFilter==='all'?all:all.filter(function(f){return f.sev===S.sevFilter}), multi=S.brand==='all';
+  $('findNote').textContent=dLabel(S.from)+' – '+dLabel(S.to)+', compared with the '+span(S.from,S.to)+' days before';
+  $('find').innerHTML='<thead><tr><th>Status</th><th>Branch / Product</th><th>Finding / Problem</th><th>Suggested Solution</th><th>Action Plan</th></tr></thead><tbody>'+
+    (list.length?list.map(function(f){
+      var cs=commentsFor(f.key), id='ap_'+btoa(unescape(encodeURIComponent(f.key))).replace(/[^a-z0-9]/gi,'');
+      return '<tr><td class="sev"><span class="pill '+f.sev+'">'+SEV_LABEL[f.sev]+'</span></td>'+
+        '<td>'+esc(f.p)+(multi?'<span class="br">'+esc(f.b)+'</span>':'')+'</td>'+
+        '<td class="prob"><b>'+esc(f.problem)+'</b><span>'+esc(f.detail)+'</span></td>'+
+        '<td class="sol">'+esc(f.solution)+'</td>'+
+        '<td class="ap"><form class="apf" data-key="'+esc(f.key)+'"><textarea id="'+id+'" maxlength="1000" placeholder="Add an action plan…" aria-label="Action plan for '+esc(f.p)+'">'+esc(S.drafts[f.key]||'')+'</textarea>'+
+        '<div class="row2"><small>'+(cs.length?cs.length+' comment'+(cs.length>1?'s':''):'No action yet')+'</small><button type="submit">Submit</button></div></form>'+
+        (cs.length?'<div class="aplast">'+cs.slice(0,2).map(cmHtml).join('')+(cs.length>2?'<small class="fnote">+'+(cs.length-2)+' more in the log below</small>':'')+'</div>':'')+'</td></tr>';
+    }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--faint);padding:24px">No issues found for this period</td></tr>')+'</tbody>';
+  drawLog();
+}
+function drawLog(){
+  var fmap={}; (S.findings||[]).forEach(function(f){fmap[f.key]=f});
+  var list=S.comments.filter(function(c){return S.brand==='all'||c.brand===S.brand});
+  $('logNote').textContent=(list.length?list.length+' action plan'+(list.length>1?'s':''):'No action plans yet')+' · latest first'+(S.live?'':' · preview only, not saved');
+  $('log').innerHTML=list.length?list.map(function(c){
+    var f=fmap[c.key];
+    return '<li><div class="lh"><b>'+esc(c.by||'Someone')+'</b><span>'+fmtTime(c.t)+'</span><span>· '+esc(c.branch)+(S.brand==='all'?' ('+esc(c.brand)+')':'')+'</span>'+(c.finding?'<span>· '+esc(c.finding)+'</span>':'')+(f?'<span class="pill '+f.sev+'">'+SEV_LABEL[f.sev]+'</span>':'')+'</div><p>'+esc(c.text)+'</p></li>';
+  }).join(''):'<li class="empty2">Action plans you submit on a finding appear here, newest at the top.</li>';
+}
+function api(action,payload){
+  return new Promise(function(resolve,reject){
+    if(isLive()){
+      var r=google.script.run.withSuccessHandler(resolve).withFailureHandler(function(e){reject(new Error(e.message||e))});
+      if(action==='comments')r.getActionComments();else r.addActionComment(payload);
+      return;
+    }
+    var cfg=getCfg(); if(!cfg){reject(new Error('Connect data first'));return}
+    if(action==='comments'){
+      fetch(cfg.url+'?format=json&action=comments&key='+encodeURIComponent(cfg.key)+'&t='+Date.now()).then(function(r){return r.json()}).then(function(d){d.error?reject(new Error(d.error)):resolve(d)}).catch(reject);
+    } else {
+      fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'addComment',key:cfg.key,comment:payload})})
+        .then(function(r){return r.json()}).then(function(d){d.error?reject(new Error(d.error)):resolve(d)}).catch(reject);
+    }
+  });
+}
+function loadComments(){
+  if(!S.live){drawLog();return}
+  api('comments').then(function(d){S.comments=d.comments||[];if(S.findings)drawFindings(inRange(scoped(),S.from,S.to),inRange(scoped(),addDays(S.from,-span(S.from,S.to)),addDays(S.from,-1)))}).catch(function(e){$('logNote').textContent='Could not load action plans: '+e.message});
+}
+$('findChips').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.sevFilter=b.dataset.sev;render()});
+$('find').addEventListener('input',function(e){var f=e.target.closest('form.apf');if(f)S.drafts[f.dataset.key]=e.target.value});
+$('find').addEventListener('submit',function(e){
+  e.preventDefault();var form=e.target, key=form.dataset.key, ta=form.querySelector('textarea'), btn=form.querySelector('button'), text=ta.value.trim();
+  if(!text){ta.focus();return}
+  var who=$('whoName').value.trim(); if(!who){$('whoName').focus();$('whoName').placeholder='Enter your name first';return}
+  var f=(S.findings||[]).filter(function(x){return x.key===key})[0]||{b:'',p:'',problem:''};
+  var c={key:key,brand:f.b,branch:f.p,finding:f.problem,text:text,by:who};
+  btn.disabled=true;btn.textContent='Saving…';
+  var done=function(list){S.drafts[key]='';S.comments=list;render()};
+  if(!S.live){done([Object.assign({t:new Date().toISOString()},c)].concat(S.comments));return}
+  api('add',c).then(function(d){done(d.comments||[])}).catch(function(err){btn.disabled=false;btn.textContent='Submit';form.querySelector('small').textContent='Not saved: '+err.message});
+});
+try{$('whoName').value=localStorage.getItem('gmp_name')||''}catch(e){}
+$('whoName').addEventListener('change',function(){try{localStorage.setItem('gmp_name',$('whoName').value.trim())}catch(e){}});
+
 /* ---------- controls ---------- */
 function fillBrands(){
   var nav='<button type="button" data-b="all"><span class="dot"></span>Overview</button><hr>';
@@ -541,7 +681,7 @@ function ingest(d){
   S.rows=d.rows.map(function(r){return {b:r[0],p:r[1],d:r[2],spend:+r[3]||0,rev:+r[4]||0,fb:+r[5]||0,sales:+r[6]||0,org:+r[7]||0,appt:+r[8]||0,book:+r[9]||0}});
   S.today=d.today;
   if(!S.from)applyPreset($('preset').value);
-  fillBrands(); fillProducts(); render();
+  fillBrands(); fillProducts(); render(); loadComments();
   var st=$('status');
   st.className='status'+(S.live?'':' preview');
   st.querySelector('span').textContent=S.live?'Live from Google Sheets · updated '+d.pulled+' · refreshes every 15 min':'Preview data · press Connect data to go live';
