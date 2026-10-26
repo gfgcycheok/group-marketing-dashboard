@@ -116,6 +116,37 @@ td{padding:8px;border-bottom:1px solid var(--line);text-align:right;white-space:
 tr.tot td{background:var(--total);font-weight:800}
 td.flag{background:var(--bad-soft);color:var(--bad);font-weight:700}
 td .br{display:block;font-size:10.5px;color:var(--faint);font-weight:500}
+.stack{display:flex;flex-direction:column;gap:14px}
+.overall{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ov{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ov .l{font-size:12px;color:var(--muted);font-weight:600}
+.ov .v{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ov .s{font-size:12px;color:var(--faint);line-height:1.45}
+.ov .s b{color:var(--bad);font-weight:700}
+.ov button.lnk{all:unset;cursor:pointer;color:var(--accent);font-weight:700;font-size:12px}
+.ov button.lnk:focus-visible{outline:2px solid var(--accent)}
+.nav button.subn{padding:7px 12px 7px 30px;font-size:13px}
+.tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tier{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--surface-2)}
+.tier:focus-visible{outline:2px solid var(--accent)}
+.tier .tn{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.tier .tc{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.tier .ts{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tier.low .tn{color:var(--bad)} .tier.mid .tn{color:var(--good)} .tier.high .tn{color:var(--accent)}
+.tier.on{border-color:currentColor;box-shadow:0 0 0 2px var(--accent) inset}
+.rgrp h3{margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.rc{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;background:var(--surface);min-height:66px}
+.rc:focus-visible{outline:2px solid var(--accent)}
+.rc .n{font-size:12.5px;font-weight:600;line-height:1.3}
+.rc .r{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;min-height:24px}
+.rc.g{background:var(--good-soft);border-color:transparent} .rc.g .r{color:var(--good)}
+.rc.b{background:var(--bad-soft);border-color:transparent} .rc.b .r{color:var(--bad)}
+.rc.on{box-shadow:0 0 0 2px var(--accent) inset}
+.btn.sm{padding:7px 12px;font-size:12px}
+table#roasDetail td.rg{color:var(--good);font-weight:800} table#roasDetail td.rb{color:var(--bad);font-weight:800}
+table#roasDetail th{cursor:default}
+@media (max-width:700px){.overall,.tiers{grid-template-columns:minmax(0,1fr)}}
 tr.clk{cursor:pointer}
 tr.clk:hover td{background:var(--surface-2)}
 tr.tot.clk:hover td{background:var(--total);filter:brightness(.97)}
@@ -236,7 +267,24 @@ table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
 
     <div class="notice" id="notice" hidden></div>
     <section class="kpis" id="kpis"></section>
+    <section class="overall" id="overall"></section>
     <div class="empty" id="empty" hidden></div>
+
+    <div id="roasView" class="stack" hidden>
+      <section class="card">
+        <div class="ch"><div><h2>ROAS Tiers</h2><div class="fnote">Click a tier to show only those branches in the detail table</div></div></div>
+        <div class="tiers" id="tiers"></div>
+      </section>
+      <section class="card">
+        <div class="ch"><div><h2>ROAS by Branch</h2><div class="fnote">Green: 20x and above · Red: below 20x · Blank: no sales yet. Click a branch for its detail.</div></div>
+          <div class="fchips" id="roasChips"></div></div>
+        <div id="roasGrid" class="stack"></div>
+      </section>
+      <section class="card" id="roasDetailCard">
+        <div class="ch"><div><h2 id="roasDetailTitle">Detail</h2><div class="fnote" id="roasDetailNote"></div></div><button type="button" class="btn ghost sm" id="roasClear" hidden>Show all</button></div>
+        <div class="tw"><table id="roasDetail"></table></div>
+      </section>
+    </div>
 
     <div id="content" style="display:flex;flex-direction:column;gap:14px">
       <section class="row r1">
@@ -382,15 +430,19 @@ function render(){
   var prev=inRange(all,addDays(S.from,-n),addDays(S.from,-1));
   var brandName = S.brand==='all'?'All brands':S.brand;
   $('sub').textContent = brandName + (S.product!=='all'?' · '+S.product:'') + ' · ' + dLabel(S.from)+' '+S.from.slice(0,4)+' – '+dLabel(S.to)+' '+S.to.slice(0,4);
-  document.querySelectorAll('#brandNav button').forEach(function(b){b.classList.toggle('on',b.dataset.b===S.brand)});
-
-  var hasBrandData = all.length>0;
-  $('empty').hidden = hasBrandData; $('content').hidden = !hasBrandData; $('kpis').hidden = !hasBrandData;
+  
+  document.querySelectorAll('#brandNav button').forEach(function(b){b.classList.toggle('on',S.page==='roas'?b.dataset.v==='roas':(b.dataset.b===S.brand&&!b.dataset.v))});
+  var hasBrandData = all.length>0, isRoas=S.page==='roas';
+  $('empty').hidden = hasBrandData; $('content').hidden = !hasBrandData||isRoas; $('kpis').hidden = !hasBrandData||isRoas;
+  $('overall').hidden = !hasBrandData; $('roasView').hidden = !hasBrandData||!isRoas;
+  $('findCard').hidden = isRoas;
   if(!hasBrandData){
     $('empty').innerHTML='<b>'+esc(brandName)+' has no data connected yet</b>Add this brand\'s spreadsheet ID and tab names to the <code>BRANDS</code> list at the top of <code>Code.gs</code>, then press Refresh data.';
     return;
   }
   var t=agg(cur), p=agg(prev);
+  drawOverall(cur);
+  if(isRoas){drawRoas(cur);return}
   drawKpis(t,p,n); drawTrend(cur); drawFunnel(t); drawSource(cur); drawTable(cur); drawBranch(cur); drawMonth(all); drawWeek(cur); drawTop(cur); drawFindings(cur,prev);
 }
 
@@ -637,9 +689,60 @@ $('apForm').addEventListener('submit',function(e){
 try{$('whoName').value=localStorage.getItem('gmp_name')||''}catch(e){}
 $('whoName').addEventListener('change',function(){try{localStorage.setItem('gmp_name',$('whoName').value.trim())}catch(e){}});
 
+/* ---------- ROAS summary ---------- */
+var ROAS_TARGET=20, ROAS_HIGH=50;
+S.page='main'; S.roasSel=null;
+function dispName(x){return x.b==='LaBéBé'&&!/^lab[eé]b[eé]/i.test(x.p)?'LaBéBé '+x.p:x.p}
+function tierOf(r){return r<=0?null:r<ROAS_TARGET?'low':r<=ROAS_HIGH?'mid':'high'}
+var TIER_NAME={low:'Below 20x',mid:'20x – 50x',high:'Above 50x'};
+function roasGroups(cur){return groupBy(cur).filter(function(x){return x.t.spend>0||x.t.rev>0})}
+function drawOverall(cur){
+  var t=agg(cur), ratio=t.rev?t.spend/t.rev:0, gs=roasGroups(cur);
+  var low=gs.filter(function(x){return tierOf(x.t.roas)==='low'}).sort(function(a,b){return a.t.roas-b.t.roas});
+  var none=gs.filter(function(x){return x.t.spend>0&&x.t.rev===0}).length;
+  $('overall').innerHTML=
+    '<div class="ov"><span class="l">Marketing Fee Ratio</span><span class="v">'+(t.rev?(ratio*100).toFixed(2)+'%':'—')+'</span><span class="s">Ad spend '+RM(t.spend,0)+' ÷ sales '+RM(t.rev,0)+'</span></div>'+
+    '<div class="ov"><span class="l">Implied Blended ROAS</span><span class="v" style="color:'+(ratio&&1/ratio>=ROAS_TARGET?'var(--good)':'var(--bad)')+'">'+(ratio?(1/ratio).toFixed(2)+'x':'—')+'</span><span class="s">1 ÷ marketing fee ratio · target '+ROAS_TARGET+'x</span></div>'+
+    '<div class="ov"><span class="l">Brand Branches Below 20x</span><span class="v" style="color:var(--bad)">'+low.length+'</span><span class="s">'+(low.length?low.slice(0,4).map(function(x){return esc(dispName(x))+' <b>'+x.t.roas.toFixed(1)+'x</b>'}).join(' · ')+(low.length>4?' · +'+(low.length-4)+' more':''):'None')+(none?' · '+none+' with no sales yet':'')+'</span>'+(S.page!=='roas'?'<button type="button" class="lnk" id="ovToRoas">Open ROAS Summary →</button>':'')+'</div>';
+  var go=$('ovToRoas'); if(go)go.onclick=function(){S.page='roas';S.roasSel={tier:'low'};render();window.scrollTo(0,0)};
+}
+function drawRoas(cur){
+  var gs=roasGroups(cur), sel=S.roasSel;
+  var tiers={low:[],mid:[],high:[]}; gs.forEach(function(x){var k=tierOf(x.t.roas);if(k)tiers[k].push(x)});
+  $('tiers').innerHTML=['low','mid','high'].map(function(k){var g=tiers[k],a=agg([].concat.apply([],g.map(function(x){return x.rows})));
+    return '<button type="button" class="tier '+k+(sel&&sel.tier===k?' on':'')+'" data-tier="'+k+'"><span class="tn">'+TIER_NAME[k]+'</span><span class="tc">'+g.length+' <small style="font-size:13px;color:var(--muted);font-weight:600">branch'+(g.length===1?'':'es')+'</small></span><span class="ts">Spend '+RM(a.spend,0)+' · Sales '+RM(a.rev,0)+(a.spend?' · '+a.roas.toFixed(1)+'x':'')+'</span></button>'}).join('');
+  $('roasChips').innerHTML=[['all','All'],['ge','20x and above'],['lt','Below 20x']].map(function(c){var on=(!sel&&c[0]==='all')||(sel&&sel.band===c[0]);return '<button type="button" data-band="'+c[0]+'" class="'+(on?'on':'')+'">'+c[1]+'</button>'}).join('');
+  var byBrand={}; gs.forEach(function(x){(byBrand[x.b]=byBrand[x.b]||[]).push(x)});
+  $('roasGrid').innerHTML=Object.keys(byBrand).map(function(b){
+    return '<div class="rgrp"><h3>'+esc(b)+'</h3><div class="rgrid">'+byBrand[b].sort(function(p,q){return q.t.roas-p.t.roas}).map(function(x){
+      var r=x.t.roas, cls=r<=0?'':r>=ROAS_TARGET?'g':'b', k=x.b+'|'+x.p;
+      return '<button type="button" class="rc '+cls+(sel&&sel.key===k?' on':'')+'" data-key="'+esc(k)+'" title="Spend '+RM(x.t.spend,0)+' · Sales '+RM(x.t.rev,0)+'"><span class="n">'+esc(dispName(x))+'</span><span class="r">'+(r>0?r.toFixed(2)+'x':'')+'</span></button>'}).join('')+'</div></div>'}).join('')||'<div class="fnote">No branches with spend in this period</div>';
+  // detail
+  var list=gs, title='All branches';
+  if(sel&&sel.tier){list=tiers[sel.tier];title=TIER_NAME[sel.tier]}
+  else if(sel&&sel.band){list=gs.filter(function(x){return sel.band==='ge'?x.t.roas>=ROAS_TARGET:x.t.roas>0&&x.t.roas<ROAS_TARGET});title=sel.band==='ge'?'20x and above':'Below 20x'}
+  else if(sel&&sel.key){list=gs.filter(function(x){return x.b+'|'+x.p===sel.key});title=list[0]?dispName(list[0]):'Branch'}
+  list=list.slice().sort(function(p,q){return q.t.roas-p.t.roas});
+  $('roasDetailTitle').textContent='Detail · '+title; $('roasClear').hidden=!sel;
+  $('roasDetailNote').textContent=list.length+' branch'+(list.length===1?'':'es')+' · '+dLabel(S.from)+' – '+dLabel(S.to)+' · Appt rate = appointments ÷ leads · Conversion = sales ÷ appointments';
+  var bl=function(v,fmt){return v?fmt(v):''};
+  function row(name,brand,x,cls){
+    var r=x.roas;
+    return '<tr class="'+(cls||'')+'"><td>'+esc(name)+(brand?'<span class="br">'+esc(brand)+'</span>':'')+'</td><td>'+bl(x.spend,function(v){return RM(v)})+'</td><td>'+bl(x.fb,N)+'</td><td>'+bl(x.appt,N)+'</td><td>'+(x.fb&&x.appt?pct(x.appt,x.fb).toFixed(1)+'%':'')+'</td><td>'+bl(x.book,N)+'</td><td>'+(x.appt&&x.book?pct(x.book,x.appt).toFixed(1)+'%':'')+'</td><td>'+bl(x.rev,function(v){return RM(v,0)})+'</td><td class="'+(r<=0?'':r>=ROAS_TARGET?'rg':'rb')+'">'+(r>0?r.toFixed(2)+'x':'')+'</td></tr>';
+  }
+  var tot=agg([].concat.apply([],list.map(function(x){return x.rows})));
+  $('roasDetail').innerHTML='<thead><tr><th>Brand Name</th><th>Ad Spend</th><th>Lead</th><th>Appointment</th><th>Appt Rate</th><th>Sales</th><th>Conversion Rate</th><th>Sales Amount</th><th>ROAS</th></tr></thead><tbody>'+
+    (list.length>1?row('Total','',tot,'tot'):'')+list.map(function(x){return row(dispName(x),x.b,x.t)}).join('')+
+    (list.length?'':'<tr><td colspan="9" style="text-align:center;color:var(--faint);padding:20px">No branches in this group</td></tr>')+'</tbody>';
+}
+$('tiers').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var k=b.dataset.tier;S.roasSel=S.roasSel&&S.roasSel.tier===k?null:{tier:k};render();$('roasDetailCard').scrollIntoView({behavior:'smooth',block:'start'})});
+$('roasChips').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.roasSel=b.dataset.band==='all'?null:{band:b.dataset.band};render()});
+$('roasGrid').addEventListener('click',function(e){var b=e.target.closest('button.rc');if(!b)return;S.roasSel=S.roasSel&&S.roasSel.key===b.dataset.key?null:{key:b.dataset.key};render();$('roasDetailCard').scrollIntoView({behavior:'smooth',block:'start'})});
+$('roasClear').addEventListener('click',function(){S.roasSel=null;render()});
+
 /* ---------- controls ---------- */
 function fillBrands(){
-  var nav='<button type="button" data-b="all"><span class="dot"></span>Overview</button><hr>';
+  var nav='<button type="button" data-b="all"><span class="dot"></span>Overview</button><button type="button" class="subn" data-b="all" data-v="roas">ROAS Summary</button><hr>';
   var has={};S.rows.forEach(function(r){has[r.b]=1});
   S.brands.forEach(function(b){nav+='<button type="button" data-b="'+esc(b)+'"><span class="dot"></span>'+esc(b)+(has[b]?'':'<span class="off">NOT LINKED</span>')+'</button>'});
   $('brandNav').innerHTML=nav;
@@ -654,7 +757,7 @@ function fillProducts(){
 }
 function setBrand(b){S.brand=b;$('brand').value=b;fillProducts();render()}
 
-$('brandNav').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setBrand(b.dataset.b)});
+$('brandNav').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.page=b.dataset.v==='roas'?'roas':'main';S.roasSel=null;setBrand(b.dataset.b)});
 $('brand').addEventListener('change',function(e){setBrand(e.target.value)});
 $('product').addEventListener('change',function(e){S.product=e.target.value;render()});
 $('preset').addEventListener('change',function(e){if(e.target.value!=='custom'){applyPreset(e.target.value);render()}});
