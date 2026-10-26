@@ -46,7 +46,21 @@ const BRANDS = [
       'Google':     'Event Spaces - Google',
     },
   },
-  { name: 'MICE Team',       spreadsheetId: '', tabs: {} },
+  {
+    name: 'MICE Team',
+    spreadsheetId: '1Cf-oUUgCjX2Dp99AAJz0jsBOoa9UEVaxGRMP0brznUA', // MICE Team Ads Data
+    tabs: {
+      'K10-WS':            'K10 - WS',
+      'K10-LF':            'K10 - LF',
+      'K11 - PWTC':        'K11 - PWTC',
+      'K12 - Romania':     'K12 - Romania',
+      'K15 - Ipoh':        'K15 - Tower Regency (Ipoh)',
+      'K17 - Melaka':      'K17 - Melaka',
+      'KL - ALL':          'KL - All',
+      'K19 - Penang':      'K19 - Royal Penang',
+      'K25 - Batu Pahat':  'K25 - Batu Pahat',
+    },
+  },
   { name: 'Kingston Hotels', spreadsheetId: '', tabs: {} },
   { name: 'Swing & Pillow',  spreadsheetId: '', tabs: {} },
   { name: 'Lilla Resort',    spreadsheetId: '', tabs: {} },
