@@ -150,8 +150,8 @@ function clearCache() {
 /* ─── Data ─────────────────────────────────────────────────────────────── */
 
 function getDashboardData(force) {
+  // Forced reads overwrite the saved copy only when finished, so viewers never wait.
   if (!force) { const hit = readCache_(); if (hit) return hit; }
-  else clearCache();
 
   const tz = Session.getScriptTimeZone();
   const out = {
