@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Group Marketing Performance</title>
-<meta name="dashboard-build" content="202610261437">
+<meta name="dashboard-build" content="202611101252">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -468,7 +468,7 @@ function render(){
   $('overall').hidden = !hasBrandData; $('roasView').hidden = !hasBrandData||!isRoas;
   $('findCard').hidden = isRoas;
   if(!hasBrandData){
-    $('empty').innerHTML='<b>'+esc(brandName)+' has no data connected yet</b>Add this brand\'s spreadsheet ID and tab names to the <code>BRANDS</code> list at the top of <code>Code.gs</code>, then press Refresh data.';
+    $('empty').innerHTML=!S.live?'<b>Connect data to see '+esc(brandName)+'</b>This browser is showing sample data only. Click <b>Connect data</b> (top right) and enter your Web app link and access key to load live numbers for every brand.<br><br><button type="button" class="btn" onclick="showConnect(true)">Connect data</button>':'<b>'+esc(brandName)+' has no data connected yet</b>Add this brand\'s spreadsheet ID and tab names to the <code>BRANDS</code> list at the top of <code>Code.gs</code>, then press Refresh data.';
     return;
   }
   var t=agg(cur), p=agg(prev);
@@ -792,7 +792,7 @@ $('roasDetail').addEventListener('keydown',function(e){var th=e.target.closest&&
 function fillBrands(){
   var nav='<button type="button" data-b="all"><span class="dot"></span>Overview</button><button type="button" class="subn" data-b="all" data-v="roas">ROAS Summary</button><hr>';
   var has={};S.rows.forEach(function(r){has[r.b]=1});
-  S.brands.forEach(function(b){nav+='<button type="button" data-b="'+esc(b)+'"><span class="dot"></span>'+esc(b)+(has[b]?'':'<span class="off">NOT LINKED</span>')+'</button>'});
+  S.brands.forEach(function(b){nav+='<button type="button" data-b="'+esc(b)+'"><span class="dot"></span>'+esc(b)+(has[b]||!S.live?'':'<span class="off">NOT LINKED</span>')+'</button>'});
   $('brandNav').innerHTML=nav;
   $('brand').innerHTML='<option value="all">All brands</option>'+S.brands.map(function(b){return '<option value="'+esc(b)+'">'+esc(b)+'</option>'}).join('');
   $('brand').value=S.brand;
@@ -831,7 +831,7 @@ function ingest(d){
   st.className='status'+(S.live?'':' preview');
   st.querySelector('span').textContent=S.live?'Live from Google Sheets · updated '+d.pulled+' · refreshes every 15 min':'Preview data · press Connect data to go live';
   var notes=[];
-  if(!S.live)notes.push('<b>This is a preview.</b> LaBéBé Puchong shows your real daily rows. The other LaBéBé branches use your September and October totals spread across the days, so daily shapes are illustrative. Once installed in your sheet, every number comes straight from your tabs.');
+  if(!S.live)notes.push('<b>Not connected in this browser.</b> Private/incognito windows and new browsers don\'t remember your connection, so you are seeing sample data. Click <b>Connect data</b> to load live numbers. ');
   if(d.errors&&d.errors.length)notes.push('<b>Some tabs could not be read:</b> '+d.errors.map(esc).join(' · '));
   $('notice').innerHTML=notes.join('<br>'); $('notice').hidden=!notes.length;
 }
@@ -863,7 +863,7 @@ function load(force){
     $('connectBtn').hidden=false;
     var cfg=getCfg();
     if(cfg){fetchRemote(cfg,force).catch(function(err){$('notice').hidden=false;$('notice').innerHTML='<b>Could not load data:</b> '+esc(err.message)+'. Use Connect data to check the link and key.'});return}
-    ingest(buildSample());return;
+    ingest(buildSample());showConnect(true);return;
   }
   if(isLive()){
     $('refresh').disabled=true;document.querySelector('.main').classList.add('loading');
