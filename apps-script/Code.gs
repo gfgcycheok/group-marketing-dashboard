@@ -46,6 +46,7 @@ const BRANDS = [
       'Melaka':     'Melaka',
       'BP':         'Batu Pahat',
       'Google':     'Event Spaces - Google',
+      'TSR':        'TSR',
     },
   },
   {
