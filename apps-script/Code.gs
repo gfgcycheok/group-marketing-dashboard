@@ -15,6 +15,7 @@ const BRANDS = [
   {
     name: 'LaBéBé',
     spreadsheetId: '', // this file (Labebe Ads Data)
+    targetTab: 'Target Summary',
     tabs: {
       'Puchong':     'Puchong',
       'SKembangan':  'Seri Kembangan',
@@ -32,6 +33,7 @@ const BRANDS = [
   {
     name: 'Event Spaces',
     spreadsheetId: '1ykPjj4asKP_0z98sFH-a9fC_ayIaOs_uW-Brokm4X7E', // Event Space Ads Data
+    targetTab: 'Target Summary',
     tabs: {
       'Glasshouse': 'Glasshouse',
       'Artelier':   'Artelier Hall',
@@ -223,7 +225,7 @@ function getDashboardData(force) {
   const tz = Session.getScriptTimeZone();
   const out = {
     brands: BRANDS.map(b => b.name),
-    rows: [], errors: [], live: true,
+    rows: [], targets: [], errors: [], live: true,
     today: Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd'),
     pulled: Utilities.formatDate(new Date(), tz, 'd MMM, h:mm a'),
   };
@@ -257,10 +259,68 @@ function getDashboardData(force) {
         if (rec.slice(3).some(v => v)) out.rows.push(rec);
       }
     });
+
+    if (brand.targetTab) readTargets_(ss, brand, out, tz);
   });
 
   writeCache_(out);
   return out;
+}
+
+/* ─── Monthly targets ("Target Summary" tab) ───────────────────────────────
+ * Layout: one block per month. A header row has the month in column A and
+ * "Branch Name" / "Hall Name" in column B; the rows under it with a month in
+ * column A are that month's branch targets. The "Total" row is skipped.
+ */
+const TARGET_HEADERS = {
+  revenue: ['new revenue', 'revenue', 'revenue target', 'sales target'],
+  spend:   ['spending', 'spend', 'ads spend', 'budget'],
+  booking: ['booking target', 'booking', 'bookings', 'sales'],
+  appt:    ['appointment', 'appointments', 'appt', 'appt target'],
+  lead:    ['lead target', 'lead', 'leads'],
+  cpl:     ['target cpl', 'cpl'],
+};
+
+function readTargets_(ss, brand, out, tz) {
+  const sh = ss.getSheetByName(brand.targetTab);
+  if (!sh) { out.errors.push(brand.name + ': tab "' + brand.targetTab + '" not found'); return; }
+  const values = sh.getDataRange().getValues();
+  let col = null;
+  for (let r = 0; r < values.length; r++) {
+    const row = values[r];
+    const b = norm_(row[1]);
+    if (b === 'branchname' || b === 'hallname' || b === 'branch' || b === 'hall') {
+      col = {};
+      const h = row.map(norm_);
+      Object.keys(TARGET_HEADERS).forEach(k => {
+        for (const a of TARGET_HEADERS[k]) {
+          const i = h.findIndex((x, j) => j > 1 && (x === norm_(a) || (k === 'appt' && x.indexOf('appt') === 0)));
+          if (i > -1) { col[k] = i; break; }
+        }
+      });
+      continue;
+    }
+    if (!col) continue;
+    const month = toMonth_(row[0], tz);
+    const name = String(row[1] || '').trim();
+    if (!month || !name || /^total$/i.test(name)) continue;
+    out.targets.push({
+      b: brand.name, m: month, name: name,
+      revenue: num_(row, col.revenue), spend: num_(row, col.spend), booking: num_(row, col.booking),
+      appt: num_(row, col.appt), lead: num_(row, col.lead), cpl: num_(row, col.cpl),
+    });
+  }
+}
+
+// "Nov'26", "Nov 2026", "November 2026" or a date → "2026-11"
+function toMonth_(v, tz) {
+  if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, tz, 'yyyy-MM');
+  const m = String(v || '').trim().match(/^([A-Za-z]{3})[a-z]*[\s'’\-]*(\d{2,4})$/);
+  if (!m) return null;
+  const mi = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[1].toLowerCase());
+  if (mi < 0) return null;
+  const y = m[2].length === 2 ? 2000 + Number(m[2]) : Number(m[2]);
+  return y + '-' + ('0' + (mi + 1)).slice(-2);
 }
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
