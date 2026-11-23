@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Group Marketing Performance</title>
-<meta name="dashboard-build" content="202611231155">
+<meta name="dashboard-build" content="202611231206">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -118,6 +118,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .tt .tva2 b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tt .tva2 span+span b{color:var(--muted)}
 .tt .ts b.pc{font-size:11.5px}
+table.tva th.srt{cursor:pointer;user-select:none}
+table.tva th.srt:hover,table.tva th.srt.on{color:var(--accent)}
+table.tva th .ar{margin-left:3px;opacity:.45}
+table.tva th.on .ar{opacity:1}
+table.tva th.sub0{padding:0}
 table.tva th.grp{text-align:center;border-left:2px solid var(--line)}
 table.tva .g1{border-left:2px solid var(--line)}
 table.tva td.tg{color:var(--muted)}
@@ -139,7 +144,7 @@ table.tva tr.tot td{cursor:default}
 .tgtrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;align-items:start}
 .tgtchart{display:flex;flex-direction:column;gap:6px;min-width:0}
 table#tgtTbl td,table#tgtTbl th{padding:6px 7px}
-table#tgtTbl th{cursor:default}
+
 table#tgtTbl tr[data-key]{cursor:pointer}
 table#tgtTbl tr[data-key]:hover td{background:var(--surface-2)}
 table#tgtTbl tr.on td{background:var(--accent-soft)}
@@ -345,7 +350,7 @@ table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
 
     <div id="tgtView" class="stack" hidden>
       <section class="card" id="tgtCard">
-        <div class="ch"><div><h2 id="tgtTitle">Target vs Actual</h2><div class="fnote" id="tgtNote"></div></div></div>
+        <div class="ch"><div><h2 id="tgtTitle">Target vs Actual</h2><div class="fnote" id="tgtNote"></div></div><div class="fchips" id="tgtBrands" role="group" aria-label="Filter by brand"></div></div>
         <div class="tgrid" id="tgtTiles"></div>
       </section>
       <section class="card">
@@ -801,6 +806,8 @@ function tshort(k,v){if(k!=='spend'&&k!=='revenue')return N(v);v=v||0;return Mat
 function fmtT(k,v){return k==='spend'||k==='revenue'?RM(v,0):N(v)}
 function drawTargets(){
   var card=$('tgtCard'), m=monthKey(S.to), all=S.targets||[];
+  var tb=[]; all.forEach(function(t){if(tb.indexOf(t.b)<0)tb.push(t.b)});
+  $('tgtBrands').innerHTML=['all'].concat(tb).map(function(b){return '<button type="button" data-b="'+esc(b)+'" class="'+(S.brand===b?'on':'')+'">'+(b==='all'?'All brands':esc(b))+'</button>'}).join('');
   var tgts=all.filter(function(t){return t.m===m&&(S.brand==='all'||t.b===S.brand)});
   // match each target to a branch tab
   var prodByBrand={}; S.rows.forEach(function(r){(prodByBrand[r.b]=prodByBrand[r.b]||{})[r.p]=1});
@@ -852,18 +859,26 @@ function drawTargets(){
     options:baseOpts({plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,boxHeight:10}},tooltip:{callbacks:{label:function(x){return ' '+x.dataset.label+': '+fmtT(mk_,x.raw)}}}},
       scales:{x:{ticks:{autoSkipPadding:14}},y:{ticks:{callback:function(v){return mk_==='spend'||mk_==='revenue'?RMs(v):N(v)}}}}})});
   // branch table
-  var head='<thead><tr><th rowspan="2">Branch</th>'+TGT_METRICS.map(function(x){return '<th colspan="3" class="grp">'+x[1]+'</th>'}).join('')+'</tr><tr>'+TGT_METRICS.map(function(){return '<th class="g1">Target</th><th>Actual</th><th>%</th>'}).join('')+'</tr></thead>';
+  var ts=S.tgtSort||{k:'name',dir:1};
+  function sh(k,label,cls){var on=ts.k===k;return '<th data-k="'+k+'" class="srt'+(cls?' '+cls:'')+(on?' on':'')+'" tabindex="0" aria-sort="'+(on?(ts.dir<0?'descending':'ascending'):'none')+'">'+label+'<span class="ar">'+(on?(ts.dir<0?'↓':'↑'):'↕')+'</span></th>'}
+  var head='<thead><tr>'+sh('name','Branch','')+TGT_METRICS.map(function(x){return '<th colspan="3" class="grp">'+x[1]+'</th>'}).join('')+'</tr><tr><th class="sub0"></th>'+TGT_METRICS.map(function(x){return sh(x[0]+'_t','Target','g1')+sh(x[0]+'_a','Actual')+sh(x[0]+'_p','%')}).join('')+'</tr></thead>';
   function cell(k,a,tg){if(!tg)return '<td class="g1">–</td><td>'+(a?fmtT(k,a):'')+'</td><td></td>';var p=a/tg,st=tgtStatus(p,pace,k==='spend');return '<td class="g1 tg">'+fmtT(k,tg)+'</td><td>'+fmtT(k,a)+'</td><td class="pc '+st[0]+'">'+Math.round(p*100)+'%</td>'}
   var totT={},totA=agg(rows); TGT_METRICS.forEach(function(x){totT[x[0]]=tgts.reduce(function(s2,t){return s2+(t[x[0]]||0)},0)});
-  var body='<tr class="tot"><td>Total</td>'+TGT_METRICS.map(function(x){return cell(x[0],totA[x[2]],totT[x[0]])}).join('')+'</tr>'+tgts.map(function(t){
-    var key=t.b+'|'+(t.p||t.name), a=t.p?agg(rows.filter(function(r){return r.b===t.b&&r.p===t.p})):agg([]);
-    return '<tr data-key="'+esc(key)+'" class="'+(sel===key?'on':'')+'"><td>'+esc(t.p||t.name)+(S.brand==='all'?'<span class="br">'+esc(t.b)+'</span>':'')+(t.p?'':'<span class="br">no daily tab yet</span>')+'</td>'+TGT_METRICS.map(function(x){return cell(x[0],a[x[2]],t[x[0]])}).join('')+'</tr>';
+  var list=tgts.map(function(t){return {t:t,key:t.b+'|'+(t.p||t.name),a:t.p?agg(rows.filter(function(r){return r.b===t.b&&r.p===t.p})):agg([])}});
+  function sv(o){if(ts.k==='name')return (o.t.p||o.t.name).toLowerCase();var mm=ts.k.split('_'),x=TGT_METRICS.filter(function(z){return z[0]===mm[0]})[0],tg=o.t[mm[0]]||0,a=o.a[x[2]]||0;return mm[1]==='t'?tg:mm[1]==='a'?a:(tg?a/tg:-1)}
+  list.sort(function(p1,p2){var x=sv(p1),y=sv(p2);return x>y?ts.dir:x<y?-ts.dir:0});
+  var body='<tr class="tot"><td>Total</td>'+TGT_METRICS.map(function(x){return cell(x[0],totA[x[2]],totT[x[0]])}).join('')+'</tr>'+list.map(function(o){
+    var t=o.t;
+    return '<tr data-key="'+esc(o.key)+'" class="'+(sel===o.key?'on':'')+'"><td>'+esc(t.p||t.name)+(S.brand==='all'?'<span class="br">'+esc(t.b)+'</span>':'')+(t.p?'':'<span class="br">no daily tab yet</span>')+'</td>'+TGT_METRICS.map(function(x){return cell(x[0],o.a[x[2]],t[x[0]])}).join('')+'</tr>';
   }).join('');
   $('tgtTbl').innerHTML=head+'<tbody>'+body+'</tbody>';
 }
+$('tgtBrands').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.tgtKey=null;setBrand(b.dataset.b)});
+function tgtSortBy(th){var k=th.dataset.k,ts=S.tgtSort||{k:'name',dir:1};S.tgtSort=ts.k===k?{k:k,dir:-ts.dir}:{k:k,dir:k==='name'?1:-1};drawTargets()}
+$('tgtTbl').addEventListener('keydown',function(e){var th=e.target.closest&&e.target.closest('th.srt');if(th&&(e.key==='Enter'||e.key===' ')){e.preventDefault();tgtSortBy(th)}});
 $('tgtTabs').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.tgtMetric=b.dataset.m;drawTargets()});
 $('tgtTiles').addEventListener('click',function(e){var b=e.target.closest('button.tt');if(!b)return;S.tgtMetric=b.dataset.m;drawTargets()});
-$('tgtTbl').addEventListener('click',function(e){var tr=e.target.closest('tr[data-key]');if(!tr)return;S.tgtKey=S.tgtKey===tr.dataset.key?null:tr.dataset.key;drawTargets()});
+$('tgtTbl').addEventListener('click',function(e){var th=e.target.closest('th.srt');if(th){tgtSortBy(th);return}var tr=e.target.closest('tr[data-key]');if(!tr)return;S.tgtKey=S.tgtKey===tr.dataset.key?null:tr.dataset.key;drawTargets()});
 
 /* ---------- ROAS summary ---------- */
 var ROAS_TARGET=20, ROAS_HIGH=50;
