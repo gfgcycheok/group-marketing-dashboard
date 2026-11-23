@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Group Marketing Performance</title>
-<meta name="dashboard-build" content="202611231059">
+<meta name="dashboard-build" content="202611231115">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -105,6 +105,13 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .fs .x{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
 .fs .bar{grid-column:1/-1;height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
 .fs .bar b{display:block;height:100%;border-radius:5px}
+.tgthead{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tgthead>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tgthead .h2{font-size:16px;font-weight:700}
+.tgthead:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.tgtopen{flex:none;font:700 12px var(--font);color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface-2)}
+.tgtopen::after{content:" ▾"}
+.tgthead[aria-expanded="true"] .tgtopen::after{content:" ▴"}
 .tgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .tt{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;background:var(--surface);min-width:0}
 .tt:focus-visible{outline:2px solid var(--accent)}
@@ -342,17 +349,6 @@ table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
     </div>
 
     <div id="content" style="display:flex;flex-direction:column;gap:14px">
-      <section class="card" id="tgtCard">
-        <div class="ch">
-          <div><h2 id="tgtTitle">Target Progress</h2><div class="fnote" id="tgtNote"></div></div>
-          <div class="tabs" id="tgtTabs"></div>
-        </div>
-        <div class="tgrid" id="tgtTiles"></div>
-        <div class="tgtrow">
-          <div class="tgtchart"><div class="fnote" id="tgtChartNote"></div><div class="chart h260"><canvas id="cTarget"></canvas></div></div>
-          <div class="tw tgttw"><table id="tgtTbl"></table></div>
-        </div>
-      </section>
       <section class="row r1">
         <article class="card">
           <div class="ch"><h2>Performance Trend</h2><div class="tabs" id="metricTabs"></div></div>
@@ -383,6 +379,20 @@ table.find .prob span,table.find .sol{color:var(--muted);font-size:12.5px}
         </article>
       </section>
 
+      <section class="card" id="tgtCard">
+        <button type="button" class="tgthead" id="tgtToggle" aria-expanded="false" aria-controls="tgtBody">
+          <span><span class="h2" id="tgtTitle">Target Progress</span><span class="fnote" id="tgtNote"></span></span>
+          <span class="tgtopen" id="tgtOpenLbl">Show</span>
+        </button>
+        <div id="tgtBody" class="stack" hidden>
+        <div class="tabs" id="tgtTabs" hidden></div>
+        <div class="tgrid" id="tgtTiles"></div>
+        <div class="tgtrow">
+          <div class="tgtchart"><div class="fnote" id="tgtChartNote"></div><div class="chart h260"><canvas id="cTarget"></canvas></div></div>
+          <div class="tw tgttw"><table id="tgtTbl"></table></div>
+        </div>
+        </div>
+      </section>
       <section class="row r3">
         <article class="card">
           <div class="ch"><h2>Monthly Performance</h2>
@@ -791,6 +801,7 @@ function drawTargets(){
     return;
   }
   var mStart=m+'-01', dim=daysIn(m), mEnd=m+'-'+('0'+dim).slice(-2);
+  var isOpen=!!S.tgtOpen;
   var asOf=S.to<mEnd?S.to:mEnd; if(S.today&&monthKey(S.today)===m&&S.today<asOf)asOf=S.today;
   var day=+asOf.slice(8,10), pace=day/dim;
   // actual rows: month to date, branches that have targets (or whole brand scope if filtered)
@@ -802,6 +813,12 @@ function drawTargets(){
   var act=agg(rSel), tot={}; TGT_METRICS.forEach(function(x){tot[x[0]]=tSel.reduce(function(a,t){return a+(t[x[0]]||0)},0)});
   var unmatched=tgts.filter(function(t){return !t.p}).map(function(t){return t.name});
   $('tgtNote').textContent=(sel?tSel[0].p+' · ':'')+'Month to date: 1–'+day+' '+MON[+m.slice(5,7)-1]+' (day '+day+' of '+dim+') · expected by now: '+Math.round(pace*100)+'% of target'+(unmatched.length?' · no daily tab matched: '+unmatched.join(', '):'');
+  if(!isOpen){
+    var rv=tot.revenue?Math.round(act.rev/tot.revenue*100):null, bk=tot.booking?Math.round(act.book/tot.booking*100):null;
+    $('tgtNote').textContent='Month to date · expected '+Math.round(pace*100)+'%'+(rv!=null?' · revenue '+rv+'%':'')+(bk!=null?' · bookings '+bk+'%':'')+' of target';
+    if(charts.cTarget){charts.cTarget.destroy();delete charts.cTarget}
+    return;
+  }
   $('tgtTiles').innerHTML=TGT_METRICS.map(function(x){
     var k=x[0], a=act[x[2]], tg=tot[k], p=tg?a/tg:0, st=tgtStatus(p,pace,k==='spend'), proj=pace?a/pace:0;
     var colr=st[0]==='ok'?'var(--good)':st[0]==='bad'?'var(--bad)':'var(--accent)';
@@ -829,6 +846,7 @@ function drawTargets(){
   }).join('');
   $('tgtTbl').innerHTML=head+'<tbody>'+body+'</tbody>';
 }
+$('tgtToggle').addEventListener('click',function(){S.tgtOpen=!S.tgtOpen;$('tgtBody').hidden=!S.tgtOpen;this.setAttribute('aria-expanded',S.tgtOpen);$('tgtOpenLbl').textContent=S.tgtOpen?'Hide':'Show';drawTargets()});
 $('tgtTiles').addEventListener('click',function(e){var b=e.target.closest('button.tt');if(!b)return;S.tgtMetric=b.dataset.m;drawTargets()});
 $('tgtTbl').addEventListener('click',function(e){var tr=e.target.closest('tr[data-key]');if(!tr)return;S.tgtKey=S.tgtKey===tr.dataset.key?null:tr.dataset.key;drawTargets()});
 
