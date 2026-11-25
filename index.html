@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Group Marketing Performance</title>
-<meta name="dashboard-build" content="202611241512">
+<meta name="dashboard-build" content="202611251645">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -116,7 +116,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .tt .tva2 span{display:flex;flex-direction:column;min-width:0}
 .tt .tva2 em{font-style:normal;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
 .tt .tva2 b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tt .tva2 span+span b{color:var(--muted)}
+.tt .tva2 span:first-child b{color:var(--muted)}
 .tt .ts b.pc{font-size:11.5px}
 table.tva th.srt{cursor:pointer;user-select:none}
 table.tva th.srt:hover,table.tva th.srt.on{color:var(--accent)}
@@ -802,7 +802,7 @@ function spreadChannelSales(tgts){
   return notes;
 }
 
-var TGT_METRICS=[['lead','Leads','fb',false],['spend','Ad Spend','spend',true],['appt','Appointments','appt',false],['booking','Bookings','book',false],['revenue','Revenue','rev',true]];
+var TGT_METRICS=[['spend','Ad Spend','spend',true],['lead','Leads','fb',false],['appt','Appointments','appt',false],['booking','Bookings','book',false],['revenue','Revenue','rev',true]];
 S.tgtMetric='revenue'; S.tgtKey=null;
 function tnorm(s){return String(s||'').toLowerCase().replace(/lab[eé]b[eé]/g,'').replace(/fb\s*\/\s*ig/g,'').replace(/[^a-z0-9]/g,'')}
 function matchTarget(t,products){
@@ -876,7 +876,7 @@ function drawTargets(){
     var k=x[0], a=act[x[2]], tg=tot[k], p=tg?a/tg:0, st=tgtStatus(p,1,k==='spend');
     var colr=st[0]==='ok'?'var(--good)':st[0]==='bad'?'var(--bad)':'var(--accent)';
     return '<button type="button" class="tt'+(S.tgtMetric===k?' on':'')+'" data-m="'+k+'"><span class="tl"><span>'+x[1]+'</span>'+(tg?'<span class="st '+st[0]+'">'+st[1]+'</span>':'')+'</span>'+
-      '<span class="tva2"><span><em>Actual</em><b title="'+fmtT(k,a)+'">'+tshort(k,a)+'</b></span><span><em>Target</em><b title="'+(tg?fmtT(k,tg):'')+'">'+(tg?tshort(k,tg):'–')+'</b></span></span>'+
+      '<span class="tva2"><span><em>Target</em><b title="'+(tg?fmtT(k,tg):'')+'">'+(tg?tshort(k,tg):'–')+'</b></span><span><em>Actual</em><b title="'+fmtT(k,a)+'">'+tshort(k,a)+'</b></span></span>'+
       '<span class="tbar"><b style="width:'+Math.min(100,p*100)+'%;background:'+colr+'"></b></span>'+
       '<span class="ts">'+(tg?'<b class="pc '+st[0]+'">'+Math.round(p*100)+'% of target</b> · '+(a>=tg?'over by '+fmtT(k,a-tg):'short '+fmtT(k,tg-a))+(single?' · full month '+fmtT(k,full[k]):''):'')+'</span></button>'}).join('');
   $('tgtTabs').innerHTML=TGT_METRICS.map(function(x){return '<button type="button" data-m="'+x[0]+'" class="'+(S.tgtMetric===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
